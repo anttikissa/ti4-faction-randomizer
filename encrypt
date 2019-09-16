@@ -1,0 +1,88 @@
+#!/usr/bin/env node
+
+let fs = require('fs')
+let shuffle = require('@anttikissa/fisher-yates-shuffle')
+let crypto = require('crypto')
+let assert = require('assert')
+let seedrandom = require('seedrandom')
+let rc4 = require('arc4')
+
+let log = console.log
+
+let factions = fs.readFileSync('./factions.txt', 'utf8').split('\n').filter(Boolean)
+let keys = fs.readFileSync('./keys.txt', 'utf8').split('\n').filter(Boolean).map(x => x.trim())
+
+assert(factions.length === 17)
+assert(keys.length >= 17)
+
+let secret = fs.readFileSync('secret.txt', 'utf8').trim()
+let secret2 = fs.readFileSync('secret2.txt', 'utf8').trim()
+
+let random = seedrandom(secret2)
+shuffle.setRandom(random)
+
+function encrypt(s, key) {
+	let cipher = rc4('arc4', key)
+	return Buffer.from(cipher.encodeString(s), 'hex').toString('base64')
+}
+
+function sha256(s) {
+	return crypto.createHash('sha256').update(`${s} ${secret}`).digest('hex')
+}
+
+let shuffled = shuffle(factions)
+
+function pad(n) {
+	n = String(n)
+	if (n.length < 2) {
+		n = ' ' + n
+	}
+	return n
+}
+
+let hashes = new Set()
+
+log('Encrypted factions:')
+shuffled.forEach((faction, i) => {
+	let hash = sha256(faction)
+	let shorthash = hash.substring(0, 4).toUpperCase()
+
+	if (hashes.has(shorthash)) {
+		throw new Error('duplicate hash')
+	}
+
+	hashes.add(shorthash)
+
+	while (faction.length < 27) {
+		faction += ' '
+	}
+
+	let string = `${shorthash} - ${faction}`
+	log(`${pad(i)}. ${encrypt(string, keys[i])}`)
+})
+
+let PLAINTEXT_DEBUG = false
+
+
+// plain
+if (PLAINTEXT_DEBUG) {
+	log()
+	log('Debug:')
+	shuffled.forEach((faction, i) => {
+		let hash = sha256(faction)
+		let shorthash = hash.substring(0, 4).toUpperCase()
+
+		while (faction.length < 27) {
+			faction += ' '
+		}
+
+		let string = `${shorthash} - ${faction}`
+		log(`${pad(i)}. ${string} ${encrypt(string, keys[i])} ${keys[i]}`)
+	})
+}
+
+log()
+log('Keys:')
+shuffled.forEach((faction, i) => {
+	console.log(`${pad(i)}. ${keys[i]}`)
+})

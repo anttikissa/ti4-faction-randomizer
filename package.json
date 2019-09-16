@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "@anttikissa/fisher-yates-shuffle": "^1.0.6",
+    "arc4": "^3.4.0",
+    "seedrandom": "^3.0.3"
+  },
+  "devDependencies": {}
+}
